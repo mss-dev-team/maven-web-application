@@ -1,0 +1,47 @@
+pipeline {
+ agent any;
+ tools {
+     maven 'maven3.9.9'
+ }
+ 
+    stages {
+        stage ('GitCheckoutCode')
+        {
+            steps {
+                git branch: 'development', credentialsId: 'cf1d70af-deae-4342-9203-bb0a8d1d8d68', url: 'https://github.com/mss-dev-team/maven-web-application.git'
+            }
+        }
+        stage ('BuildTheCode')
+        {
+            steps {
+                sh "mvn clean package"
+            }
+        }
+         stage ('SonarqubeReport')
+        {
+            steps {
+                sh "mvn sonar:sonar"
+            }
+        }
+         stage ('UploadArtifactsinNexus')
+        {
+            steps {
+                sh "mvn deploy"
+            }
+        }
+        stage ('DeploytoTomcat')
+        {
+            steps {
+                sshagent(['ac11c26c-5385-420f-9244-14eeaf1bbe8c']) {
+                sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@52.66.253.44:/opt/apache-tomcat-9.0.105/webapps/"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            emailext body: ''' Build Over''', subject: '''Build success''', to: 'shaikkhajapasha21@gmal.com'
+        }
+    }
+}
